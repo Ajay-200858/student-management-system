@@ -24,11 +24,18 @@ export default function Login() {
     try {
       if (isRegister) {
         // REGISTER
-        await axios.post(`${API}/auth/register`, {
-          username: form.username,
-          role: form.role
-        })
-        setMessage({ text: `✅ Account created! Password is: ${form.role === 'student' ? 'student123' : 'JD'}`, type: 'success' })
+       // Validate password matches the role's fixed password
+const expectedPassword = form.role === 'student' ? 'student123' : 'JD'
+if (form.password !== expectedPassword) {
+  setMessage({ text: '❌ Wrong password for this role. Ask your administrator.', type: 'error' })
+  setLoading(false)
+  return
+}
+await axios.post(`${API}/auth/register`, {
+  username: form.username,
+  role: form.role
+})
+setMessage({ text: '✅ Account created successfully! Please login.', type: 'success' })
         setIsRegister(false)
       } else {
         // LOGIN
@@ -86,14 +93,24 @@ export default function Login() {
           )}
 
           {isRegister && (
-            <div className="form-group">
-              <label>Role</label>
-              <select name="role" value={form.role} onChange={handleChange}>
-  <option value="student">Student</option>
-  <option value="teacher">Teacher</option>
-</select>
-            </div>
-          )}
+  <>
+    <div className="form-group">
+      <label>Role</label>
+      <select name="role" value={form.role} onChange={handleChange}>
+        <option value="student">Student</option>
+        <option value="teacher">Teacher</option>
+      </select>
+    </div>
+    <div className="form-group">
+      <label>Password</label>
+      <input
+        type="password" name="password"
+        value={form.password} onChange={handleChange}
+        placeholder="Enter your password" required
+      />
+    </div>
+  </>
+)}
 
           <button
             type="submit" className="btn btn-primary"
