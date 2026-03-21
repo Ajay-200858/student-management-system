@@ -20,31 +20,24 @@ export default function Login() {
     e.preventDefault()
     setLoading(true)
     setMessage({ text: '', type: '' })
-
     try {
       if (isRegister) {
-        // REGISTER
-       // Validate password matches the role's fixed password
-const expectedPassword = form.role === 'student' ? 'student123' : 'JD'
-if (form.password !== expectedPassword) {
-  setMessage({ text: '❌ Wrong password for this role. Ask your administrator.', type: 'error' })
-  setLoading(false)
-  return
-}
-await axios.post(`${API}/auth/register`, {
-  username: form.username,
-  role: form.role
-})
-setMessage({ text: '✅ Account created successfully! Please login.', type: 'success' })
+        await axios.post(`${API}/auth/register`, {
+          username: form.username,
+          role: form.role,
+        })
+        setMessage({
+          text: `✅ Account created! Password: ${form.role === 'student' ? 'student123' : 'JD'}`,
+          type: 'success',
+        })
         setIsRegister(false)
       } else {
-        // LOGIN
         const res = await axios.post(`${API}/auth/login`, {
           username: form.username,
-          password: form.password
+          password: form.password,
         })
         localStorage.setItem('user', JSON.stringify(res.data))
-        navigate('/')
+        navigate('/dashboard')   // ← always go to /dashboard, never to /
       }
     } catch (err) {
       setMessage({ text: err.response?.data?.error || 'Something went wrong', type: 'error' })
@@ -55,8 +48,10 @@ setMessage({ text: '✅ Account created successfully! Please login.', type: 'suc
 
   return (
     <div style={{
-      minHeight: '100vh', display: 'flex',
-      alignItems: 'center', justifyContent: 'center',
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
       background: 'linear-gradient(135deg, #1a237e, #4361ee)',
     }}>
       <div className="card" style={{ width: '380px' }}>
@@ -93,24 +88,14 @@ setMessage({ text: '✅ Account created successfully! Please login.', type: 'suc
           )}
 
           {isRegister && (
-  <>
-    <div className="form-group">
-      <label>Role</label>
-      <select name="role" value={form.role} onChange={handleChange}>
-        <option value="student">Student</option>
-        <option value="teacher">Teacher</option>
-      </select>
-    </div>
-    <div className="form-group">
-      <label>Password</label>
-      <input
-        type="password" name="password"
-        value={form.password} onChange={handleChange}
-        placeholder="Enter your password" required
-      />
-    </div>
-  </>
-)}
+            <div className="form-group">
+              <label>Role</label>
+              <select name="role" value={form.role} onChange={handleChange}>
+                <option value="student">Student</option>
+                <option value="teacher">Teacher</option>
+              </select>
+            </div>
+          )}
 
           <button
             type="submit" className="btn btn-primary"
@@ -128,6 +113,15 @@ setMessage({ text: '✅ Account created successfully! Please login.', type: 'suc
             style={{ color: '#4361ee', cursor: 'pointer', fontWeight: '600' }}
           >
             {isRegister ? 'Login' : 'Register'}
+          </span>
+        </p>
+
+        <p style={{ textAlign: 'center', marginTop: '8px' }}>
+          <span
+            onClick={() => navigate('/')}
+            style={{ fontSize: '13px', color: '#aaa', cursor: 'pointer' }}
+          >
+            ← Back to Home
           </span>
         </p>
       </div>

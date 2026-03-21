@@ -43,7 +43,6 @@ def add_mark():
             "INSERT INTO marks (student_id, subject, marks) VALUES (%s, %s, %s)",
             (student_id, subject, marks)
         )
-        # Update total_marks in students table
         cursor.execute(
             """UPDATE students
                SET total_marks = (SELECT COALESCE(SUM(marks), 0) FROM marks WHERE student_id = %s)
@@ -57,13 +56,47 @@ def add_mark():
         conn.close()
 
 
+# ── UPDATE A MARK ─────────────────────────────────────────
+@marks_bp.route('/<int:mark_id>', methods=['PUT'])
+def update_mark(mark_id):
+    data = request.json
+    new_marks = data.get('marks')
+
+    if new_marks is None:
+        return jsonify({'error': 'marks value required'}), 400
+
+    if not (0 <= int(new_marks) <= 100):
+        return jsonify({'error': 'Marks must be between 0 and 100'}), 400
+
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT student_id FROM marks WHERE id = %s", (mark_id,))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({'error': 'Mark not found'}), 404
+
+        student_id = row[0]
+        cursor.execute("UPDATE marks SET marks = %s WHERE id = %s", (new_marks, mark_id))
+        cursor.execute(
+            """UPDATE students
+               SET total_marks = (SELECT COALESCE(SUM(marks), 0) FROM marks WHERE student_id = %s)
+               WHERE student_id = %s""",
+            (student_id, student_id)
+        )
+        conn.commit()
+        return jsonify({'message': 'Mark updated successfully'})
+    finally:
+        cursor.close()
+        conn.close()
+
+
 # ── DELETE A MARK ─────────────────────────────────────────
 @marks_bp.route('/<int:mark_id>', methods=['DELETE'])
 def delete_mark(mark_id):
     conn = get_connection()
     cursor = conn.cursor()
     try:
-        # Get student_id before deleting
         cursor.execute("SELECT student_id FROM marks WHERE id = %s", (mark_id,))
         row = cursor.fetchone()
 
@@ -79,6 +112,21 @@ def delete_mark(mark_id):
             )
         conn.commit()
         return jsonify({'message': 'Mark deleted successfully'})
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# ── CLEAR ALL MARKS FOR A STUDENT ────────────────────────
+@marks_bp.route('/clear/<int:student_id>', methods=['DELETE'])
+def clear_student_marks(student_id):
+    conn = get_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM marks WHERE student_id = %s", (student_id,))
+        cursor.execute("UPDATE students SET total_marks = 0 WHERE student_id = %s", (student_id,))
+        conn.commit()
+        return jsonify({'message': 'All marks cleared successfully'})
     finally:
         cursor.close()
         conn.close()

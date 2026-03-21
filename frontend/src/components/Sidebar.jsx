@@ -4,11 +4,17 @@ import { Link, useNavigate, useLocation } from 'react-router-dom'
 export default function Sidebar() {
   const navigate = useNavigate()
   const location = useLocation()
-  const user = JSON.parse(localStorage.getItem('user') || 'null')
+
+  let user = null
+  try {
+    user = JSON.parse(localStorage.getItem('user') || 'null')
+  } catch {
+    user = null
+  }
 
   function logout() {
     localStorage.removeItem('user')
-    navigate('/login')
+    navigate('/')
   }
 
   const linkStyle = (path) => ({
@@ -27,12 +33,15 @@ export default function Sidebar() {
   return (
     <div style={{
       width: '220px',
+      minWidth: '220px',       // ← prevent collapsing
       background: '#1a237e',
       minHeight: '100vh',
       padding: '24px 16px',
       display: 'flex',
       flexDirection: 'column',
       flexShrink: 0,
+      zIndex: 10,
+      position: 'relative',   // ← sits above any lingering canvas
     }}>
       {/* App Title */}
       <div style={{ marginBottom: '30px' }}>
@@ -46,11 +55,9 @@ export default function Sidebar() {
 
       {/* Navigation Links */}
       <nav style={{ flex: 1 }}>
-        <Link to="/" style={linkStyle('/')}>🏠 Dashboard</Link>
-        <Link to="/students" style={linkStyle('/students')}>👥 Students</Link>
+        <Link to="/dashboard"   style={linkStyle('/dashboard')}>🏠 Dashboard</Link>
+        <Link to="/students"    style={linkStyle('/students')}>👥 Students</Link>
         <Link to="/add-student" style={linkStyle('/add-student')}>➕ Add Student</Link>
-
-        {/* Admin-only link */}
         {user?.role === 'admin' && (
           <Link to="/admin/logs" style={linkStyle('/admin/logs')}>📋 Login Logs</Link>
         )}
@@ -60,8 +67,9 @@ export default function Sidebar() {
       <button
         onClick={logout}
         style={{
-          width: '100%', padding: '10px', background: '#e63946',
-          color: 'white', border: 'none', borderRadius: '6px',
+          width: '100%', padding: '10px',
+          background: '#e63946', color: 'white',
+          border: 'none', borderRadius: '6px',
           cursor: 'pointer', fontSize: '14px', fontWeight: '500',
         }}
       >
