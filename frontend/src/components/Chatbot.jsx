@@ -1,252 +1,424 @@
 // frontend/src/components/Chatbot.jsx
-import { useState, useEffect, useRef } from 'react'
-import axios from 'axios'
-import './Chatbot.css'
 
-const API = 'http://localhost:5000/api'
+import { useState, useRef, useEffect } from 'react'
 
-// ─────────────────────────────────────────────────────────
-//  PASTE YOUR GEMINI API KEY BELOW
-//  Get one free at: https://aistudio.google.com/app/apikey
-// ─────────────────────────────────────────────────────────
-const GEMINI_API_KEY = 'AIzaSyC32sVU_wGZ6_Zrgvnhi2BLjxgX24i1ujg'
+// ─────────────────────────────────────────────────────────────
+//  🔑  PASTE YOUR GEMINI API KEY HERE
+const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE'
+// ─────────────────────────────────────────────────────────────
 
-const SUGGESTIONS = [
-  'Show top 5 students',
-  'Who scored highest in Math?',
-  'Average marks per department',
-  'Students at risk of failing',
-  'Generate a summary report',
-]
+const GEMINI_URL =
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
+
+const SYSTEM_CONTEXT = `You are a helpful assistant for a Student Management System. 
+You help users manage students, marks, departments, and understand the system. 
+Keep answers short and friendly. The system has: Students, Marks, Progress analytics, Login Logs (admin only).`
+
+/* ── tiny markdown-ish renderer ── */
+function MsgText({ text }) {
+  const lines = text.split('\n')
+  return (
+    <div>
+      {lines.map((line, i) => {
+        // bold **text**
+        const parts = line.split(/(\*\*[^*]+\*\*)/g).map((p, j) =>
+          p.startsWith('**') && p.endsWith('**')
+            ? <strong key={j} style={{ color: '#c4b5fd' }}>{p.slice(2, -2)}</strong>
+            : p
+        )
+        return <div key={i} style={{ marginBottom: line === '' ? 6 : 2 }}>{parts}</div>
+      })}
+    </div>
+  )
+}
 
 export default function Chatbot() {
-  const [open, setOpen] = useState(false)
+  const [open,     setOpen]     = useState(false)
   const [messages, setMessages] = useState([
     {
-      role: 'assistant',
-      text: "Hi! I'm your AI student assistant powered by Claude. Ask me about student performance, top scorers, department stats, or anything about your students.",
+      role: 'bot',
+      text: '👋 Hi! I\'m your Student MS assistant.\nAsk me anything about students, marks, or the system!',
     },
   ])
-  const [input, setInput] = useState('')
+  const [input,   setInput]   = useState('')
   const [loading, setLoading] = useState(false)
-  const [students, setStudents] = useState([])
+  const [dots,    setDots]    = useState('.')
   const bottomRef = useRef(null)
+  const inputRef  = useRef(null)
 
-  // Load student data when chatbot opens
-  useEffect(() => {
-    if (open && students.length === 0) {
-      axios.get(`${API}/students/`).then(res => setStudents(res.data)).catch(() => {})
-    }
-  }, [open])
-
-  // Auto-scroll to latest message
+  /* auto-scroll */
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
 
-  function buildContext(students) {
-    if (!students.length) return 'No student data available yet.'
-    const depts = {}
-    students.forEach(s => {
-      if (!depts[s.department]) depts[s.department] = { count: 0, total: 0 }
-      depts[s.department].count++
-      depts[s.department].total += s.total_marks
-    })
-    const deptSummary = Object.entries(depts)
-      .map(([d, v]) => `${d}: ${v.count} students, avg ${Math.round(v.total / v.count)} marks`)
-      .join(' | ')
-    const sorted = [...students].sort((a, b) => b.total_marks - a.total_marks)
-    const top3 = sorted.slice(0, 3).map(s => `${s.name} (${s.total_marks})`).join(', ')
-    const atRisk = students.filter(s => s.total_marks < 50).map(s => s.name).join(', ') || 'none'
-    return `Total students: ${students.length}. Departments: ${deptSummary}. Top 3: ${top3}. At-risk (below 50): ${atRisk}.`
-  }
+  /* animated dots */
+  useEffect(() => {
+    if (!loading) return
+    const t = setInterval(() => setDots(d => d.length >= 3 ? '.' : d + '.'), 400)
+    return () => clearInterval(t)
+  }, [loading])
 
-  async function callClaude(userMessage) {
-    const context = buildContext(students)
-    const systemPrompt = `You are an AI assistant for a Student Management System.
-Here is the current student data summary:
-${context}
-Full student list: ${students.map(s => `${s.name} — ${s.department} — ${s.total_marks} marks`).join(', ')}
+  /* focus input when opened */
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 100)
+  }, [open])
 
-Answer questions about this data helpfully and concisely. Use bullet points for lists. Keep answers under 150 words unless a detailed report is requested.`
-
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: 'user', content: userMessage }],
-      }),
-    })
-    if (!response.ok) throw new Error('Claude API error')
-    const data = await response.json()
-    return data.content?.[0]?.text || 'No response from Claude.'
-  }
-
-  async function callGemini(userMessage) {
-    if (!GEMINI_API_KEY || GEMINI_API_KEY === 'PASTE_YOUR_GEMINI_API_KEY_HERE') return null
-    try {
-      const context = buildContext(students)
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{
-              parts: [{
-                text: `You are a data analyst. Based on this student data: ${context}. Answer in 1 short sentence: "${userMessage}"`,
-              }],
-            }],
-          }),
-        }
-      )
-      if (!response.ok) return null
-      const data = await response.json()
-      return data.candidates?.[0]?.content?.parts?.[0]?.text || null
-    } catch {
-      return null
-    }
-  }
-
-  async function sendMessage(text) {
-    const msg = (text || input).trim()
-    if (!msg || loading) return
+  async function send() {
+    const text = input.trim()
+    if (!text || loading) return
     setInput('')
-    setMessages(prev => [...prev, { role: 'user', text: msg }])
+
+    const userMsg = { role: 'user', text }
+    setMessages(prev => [...prev, userMsg])
     setLoading(true)
 
     try {
-      // Re-fetch fresh student data before answering
-      const res = await axios.get(`${API}/students/`)
-      setStudents(res.data)
+      // Build conversation history for Gemini
+      const history = messages
+        .filter(m => m.role !== 'error')
+        .map(m => ({
+          role: m.role === 'user' ? 'user' : 'model',
+          parts: [{ text: m.text }],
+        }))
 
-      let reply = ''
-
-      // Try Gemini for a quick data insight first
-      const geminiSnippet = await callGemini(msg)
-      if (geminiSnippet) reply += `📊 *Gemini insight:* ${geminiSnippet}\n\n`
-
-      // Claude handles the full conversational answer
-      const claudeReply = await callClaude(msg)
-      reply += claudeReply
-
-      setMessages(prev => [...prev, { role: 'assistant', text: reply }])
-    } catch (err) {
-      // Graceful fallback using local data
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          text: `I couldn't reach the AI right now. Here's what I know:\n\n${buildContext(students)}\n\nPlease check your API connection.`,
+      const body = {
+        system_instruction: { parts: [{ text: SYSTEM_CONTEXT }] },
+        contents: [
+          ...history,
+          { role: 'user', parts: [{ text }] },
+        ],
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 512,
         },
-      ])
+      }
+
+      const res  = await fetch(GEMINI_URL, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        const errMsg = data?.error?.message || 'API error'
+        throw new Error(errMsg)
+      }
+
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.'
+      setMessages(prev => [...prev, { role: 'bot', text: reply }])
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        role: 'error',
+        text: `⚠️ ${err.message}`,
+      }])
     } finally {
       setLoading(false)
     }
   }
 
   function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      sendMessage()
-    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+  }
+
+  /* ── styles ── */
+  const glass = {
+    background:   'rgba(18, 16, 46, 0.72)',
+    backdropFilter: 'blur(20px)',
+    WebkitBackdropFilter: 'blur(20px)',
+    border:       '1px solid rgba(139, 92, 246, 0.25)',
   }
 
   return (
-    <div className="cb-wrapper">
-      {/* Chat window */}
+    <>
+      {/* ── Chat window ── */}
       {open && (
-        <div className="cb-window">
+        <div style={{
+          position:   'fixed',
+          bottom:     88,
+          right:      28,
+          width:      370,
+          height:     520,
+          borderRadius: 20,
+          display:    'flex',
+          flexDirection: 'column',
+          overflow:   'hidden',
+          zIndex:     9999,
+          boxShadow:  '0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.2)',
+          ...glass,
+        }}>
+
           {/* Header */}
-          <div className="cb-header">
-            <div className="cb-header-left">
-              <div className="cb-avatar">AI</div>
-              <div>
-                <div className="cb-title">Student Assistant</div>
-                <div className="cb-subtitle">Claude + Gemini</div>
+          <div style={{
+            padding:      '16px 18px',
+            borderBottom: '1px solid rgba(139,92,246,0.2)',
+            background:   'rgba(124,58,237,0.15)',
+            display:      'flex', alignItems: 'center', gap: 12,
+          }}>
+            {/* Avatar */}
+            <div style={{
+              width: 38, height: 38, borderRadius: '50%',
+              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 18, flexShrink: 0,
+              boxShadow: '0 0 12px rgba(124,58,237,0.5)',
+            }}>🤖</div>
+
+            <div style={{ flex: 1 }}>
+              <div style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>
+                Student MS Assistant
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
+                <div style={{
+                  width: 7, height: 7, borderRadius: '50%',
+                  background: '#10b981',
+                  boxShadow: '0 0 6px #10b981',
+                }}/>
+                <span style={{ color: '#10b981', fontSize: 11 }}>
+                  {loading ? 'Typing…' : 'Online'}
+                </span>
               </div>
             </div>
-            <button className="cb-close" onClick={() => setOpen(false)}>✕</button>
+
+            {/* Powered by */}
+            <div style={{
+              fontSize: 10, color: '#6b7280',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 20, padding: '3px 9px',
+            }}>
+              Gemini ✨
+            </div>
+
+            {/* Close */}
+            <button onClick={() => setOpen(false)} style={{
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 8, width: 28, height: 28,
+              color: '#9ca3af', cursor: 'pointer', fontSize: 14,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>✕</button>
           </div>
 
           {/* Messages */}
-          <div className="cb-messages">
-            {messages.map((msg, i) => (
-              <div key={i} className={`cb-msg cb-msg--${msg.role}`}>
-                {msg.role === 'assistant' && (
-                  <div className="cb-msg-avatar">AI</div>
-                )}
-                <div className="cb-bubble">
-                  {msg.text.split('\n').map((line, j) => (
-                    <span key={j}>
-                      {line}
-                      {j < msg.text.split('\n').length - 1 && <br />}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ))}
+          <div style={{
+            flex: 1, overflowY: 'auto', padding: '16px 14px',
+            display: 'flex', flexDirection: 'column', gap: 12,
+            scrollbarWidth: 'thin',
+            scrollbarColor: 'rgba(139,92,246,0.3) transparent',
+          }}>
+            {messages.map((msg, i) => {
+              const isUser  = msg.role === 'user'
+              const isError = msg.role === 'error'
+              return (
+                <div key={i} style={{
+                  display: 'flex',
+                  justifyContent: isUser ? 'flex-end' : 'flex-start',
+                  alignItems: 'flex-end', gap: 8,
+                }}>
+                  {/* Bot avatar */}
+                  {!isUser && (
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                      background: isError
+                        ? 'rgba(220,38,38,0.3)'
+                        : 'linear-gradient(135deg,#7c3aed,#4f46e5)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13,
+                    }}>
+                      {isError ? '⚠️' : '🤖'}
+                    </div>
+                  )}
 
+                  {/* Bubble */}
+                  <div style={{
+                    maxWidth: '78%',
+                    padding: '10px 14px',
+                    borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                    fontSize: 13, lineHeight: 1.55,
+                    background: isUser
+                      ? 'linear-gradient(135deg, #7c3aed, #4f46e5)'
+                      : isError
+                        ? 'rgba(220,38,38,0.15)'
+                        : 'rgba(255,255,255,0.07)',
+                    border: isUser
+                      ? 'none'
+                      : isError
+                        ? '1px solid rgba(220,38,38,0.3)'
+                        : '1px solid rgba(139,92,246,0.18)',
+                    color: isUser ? '#fff' : isError ? '#f87171' : '#e2e0ff',
+                    boxShadow: isUser
+                      ? '0 4px 15px rgba(124,58,237,0.3)'
+                      : 'none',
+                  }}>
+                    <MsgText text={msg.text} />
+                  </div>
+
+                  {/* User avatar */}
+                  {isUser && (
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
+                      background: 'rgba(139,92,246,0.3)',
+                      border: '1px solid rgba(139,92,246,0.4)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 13,
+                    }}>
+                      👤
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+
+            {/* Typing indicator */}
             {loading && (
-              <div className="cb-msg cb-msg--assistant">
-                <div className="cb-msg-avatar">AI</div>
-                <div className="cb-bubble cb-typing">
-                  <span /><span /><span />
+              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+                <div style={{
+                  width: 28, height: 28, borderRadius: '50%',
+                  background: 'linear-gradient(135deg,#7c3aed,#4f46e5)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
+                }}>🤖</div>
+                <div style={{
+                  padding: '10px 16px',
+                  background: 'rgba(255,255,255,0.07)',
+                  border: '1px solid rgba(139,92,246,0.18)',
+                  borderRadius: '18px 18px 18px 4px',
+                  color: '#a78bfa', fontSize: 13,
+                }}>
+                  Thinking{dots}
                 </div>
               </div>
             )}
             <div ref={bottomRef} />
           </div>
 
-          {/* Suggestions (show only on first message) */}
+          {/* Quick suggestions */}
           {messages.length === 1 && (
-            <div className="cb-suggestions">
-              {SUGGESTIONS.map(s => (
-                <button key={s} className="cb-sugg" onClick={() => sendMessage(s)}>
-                  {s}
+            <div style={{
+              padding: '0 14px 10px',
+              display: 'flex', gap: 6, flexWrap: 'wrap',
+            }}>
+              {[
+                'How do I add a student?',
+                'What is the pass mark?',
+                'How to view marks?',
+                'Explain progress tab',
+              ].map(q => (
+                <button key={q} onClick={() => { setInput(q); setTimeout(send, 0) }}
+                  style={{
+                    padding: '5px 11px', fontSize: 11,
+                    background: 'rgba(124,58,237,0.15)',
+                    border: '1px solid rgba(124,58,237,0.3)',
+                    borderRadius: 20, color: '#a78bfa',
+                    cursor: 'pointer',
+                  }}>
+                  {q}
                 </button>
               ))}
             </div>
           )}
 
-          {/* Input */}
-          <div className="cb-input-row">
-            <input
-              className="cb-input"
-              type="text"
-              placeholder="Ask about students…"
+          {/* Input bar */}
+          <div style={{
+            padding: '12px 14px',
+            borderTop: '1px solid rgba(139,92,246,0.18)',
+            background: 'rgba(0,0,0,0.2)',
+            display: 'flex', gap: 8, alignItems: 'flex-end',
+          }}>
+            <textarea
+              ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKey}
-              disabled={loading}
+              placeholder="Ask anything… (Enter to send)"
+              rows={1}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(139,92,246,0.25)',
+                borderRadius: 12,
+                color: '#e2e0ff',
+                fontSize: 13,
+                outline: 'none',
+                resize: 'none',
+                fontFamily: 'inherit',
+                lineHeight: 1.5,
+                maxHeight: 90,
+                overflowY: 'auto',
+                scrollbarWidth: 'thin',
+              }}
             />
             <button
-              className="cb-send"
-              onClick={() => sendMessage()}
+              onClick={send}
               disabled={loading || !input.trim()}
+              style={{
+                width: 40, height: 40, borderRadius: 12, flexShrink: 0,
+                background: loading || !input.trim()
+                  ? 'rgba(124,58,237,0.2)'
+                  : 'linear-gradient(135deg,#7c3aed,#4f46e5)',
+                border: '1px solid rgba(139,92,246,0.3)',
+                color: '#fff', fontSize: 16, cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'all 0.2s',
+                boxShadow: loading || !input.trim() ? 'none' : '0 4px 15px rgba(124,58,237,0.35)',
+              }}
             >
-              ↑
+              {loading ? '⏳' : '➤'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Floating toggle button */}
-      <button className="cb-fab" onClick={() => setOpen(o => !o)} title="AI Assistant">
-        {open ? (
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
-          </svg>
-        ) : (
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-          </svg>
-        )}
-        {!open && <div className="cb-dot" />}
+      {/* ── FAB button ── */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        style={{
+          position:   'fixed',
+          bottom:     28,
+          right:      28,
+          width:      56,
+          height:     56,
+          borderRadius: '50%',
+          background: open
+            ? 'rgba(220,38,38,0.8)'
+            : 'linear-gradient(135deg,#7c3aed,#4f46e5)',
+          border:     '2px solid rgba(139,92,246,0.4)',
+          color:      '#fff',
+          fontSize:   24,
+          cursor:     'pointer',
+          zIndex:     10000,
+          display:    'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow:  open
+            ? '0 8px 30px rgba(220,38,38,0.4)'
+            : '0 8px 30px rgba(124,58,237,0.5), 0 0 0 6px rgba(124,58,237,0.1)',
+          transition: 'all 0.3s ease',
+          backdropFilter: 'blur(10px)',
+        }}
+      >
+        {open ? '✕' : '🤖'}
       </button>
-    </div>
+
+      {/* Pulse ring when closed */}
+      {!open && (
+        <div style={{
+          position: 'fixed', bottom: 28, right: 28,
+          width: 56, height: 56,
+          borderRadius: '50%',
+          border: '2px solid rgba(124,58,237,0.4)',
+          zIndex: 9998,
+          animation: 'chatPulse 2s infinite',
+          pointerEvents: 'none',
+        }}/>
+      )}
+
+      <style>{`
+        @keyframes chatPulse {
+          0%   { transform: scale(1);   opacity: 0.8; }
+          70%  { transform: scale(1.5); opacity: 0;   }
+          100% { transform: scale(1.5); opacity: 0;   }
+        }
+      `}</style>
+    </>
   )
 }

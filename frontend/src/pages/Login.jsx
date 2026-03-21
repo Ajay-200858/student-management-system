@@ -22,10 +22,7 @@ export default function Login() {
     setMessage({ text: '', type: '' })
     try {
       if (isRegister) {
-        await axios.post(`${API}/auth/register`, {
-          username: form.username,
-          role: form.role,
-        })
+        await axios.post(`${API}/auth/register`, { username: form.username, role: form.role })
         setMessage({
           text: `✅ Account created! Password: ${form.role === 'student' ? 'student123' : 'JD'}`,
           type: 'success',
@@ -37,7 +34,7 @@ export default function Login() {
           password: form.password,
         })
         localStorage.setItem('user', JSON.stringify(res.data))
-        navigate('/dashboard')   // ← always go to /dashboard, never to /
+        navigate('/dashboard')
       }
     } catch (err) {
       setMessage({ text: err.response?.data?.error || 'Something went wrong', type: 'error' })
@@ -48,19 +45,40 @@ export default function Login() {
 
   return (
     <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #1a237e, #4361ee)',
+      minHeight: '100vh', display: 'flex',
+      alignItems: 'center', justifyContent: 'center',
+      background: 'linear-gradient(135deg, #0d0f1a 0%, #12102a 100%)',
     }}>
-      <div className="card" style={{ width: '380px' }}>
-        <h2 style={{ textAlign: 'center', marginBottom: '6px', color: '#1a237e' }}>
-          🎓 Student Management
-        </h2>
-        <p style={{ textAlign: 'center', color: '#888', fontSize: '14px', marginBottom: '24px' }}>
-          {isRegister ? 'Create a new account' : 'Sign in to continue'}
-        </p>
+      {/* Glow */}
+      <div style={{
+        position: 'absolute', width: 400, height: 400, borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(124,58,237,0.15) 0%, transparent 70%)',
+        pointerEvents: 'none',
+      }} />
+
+      <div style={{
+        width: 400,
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(139,92,246,0.2)',
+        borderRadius: 20, padding: 36,
+        backdropFilter: 'blur(20px)',
+        position: 'relative', zIndex: 1,
+      }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <div style={{
+            width: 56, height: 56, borderRadius: 16,
+            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: 28, margin: '0 auto 14px',
+          }}>🎓</div>
+          <h2 style={{ color: '#fff', fontWeight: 800, fontSize: 22, marginBottom: 6 }}>
+            Student Management
+          </h2>
+          <p style={{ color: '#6b7280', fontSize: 14 }}>
+            {isRegister ? 'Create a new account' : 'Sign in to continue'}
+          </p>
+        </div>
 
         {message.text && (
           <div className={`alert alert-${message.type}`}>{message.text}</div>
@@ -97,30 +115,26 @@ export default function Login() {
             </div>
           )}
 
-          <button
-            type="submit" className="btn btn-primary"
-            style={{ width: '100%', padding: '12px', fontSize: '15px' }}
-            disabled={loading}
-          >
-            {loading ? 'Please wait...' : (isRegister ? 'Create Account' : 'Login')}
+          <button type="submit" className="btn btn-primary"
+            style={{ width: '100%', padding: '13px', fontSize: 15, marginTop: 4 }}
+            disabled={loading}>
+            {loading ? 'Please wait...' : (isRegister ? 'Create Account' : 'Sign In')}
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '16px', fontSize: '14px', color: '#666' }}>
+        <p style={{ textAlign: 'center', marginTop: 18, fontSize: 14, color: '#6b7280' }}>
           {isRegister ? 'Already have an account? ' : "Don't have an account? "}
           <span
             onClick={() => { setIsRegister(!isRegister); setMessage({ text: '', type: '' }) }}
-            style={{ color: '#4361ee', cursor: 'pointer', fontWeight: '600' }}
+            style={{ color: '#a78bfa', cursor: 'pointer', fontWeight: 600 }}
           >
-            {isRegister ? 'Login' : 'Register'}
+            {isRegister ? 'Sign In' : 'Register'}
           </span>
         </p>
 
-        <p style={{ textAlign: 'center', marginTop: '8px' }}>
-          <span
-            onClick={() => navigate('/')}
-            style={{ fontSize: '13px', color: '#aaa', cursor: 'pointer' }}
-          >
+        <p style={{ textAlign: 'center', marginTop: 10 }}>
+          <span onClick={() => navigate('/')}
+            style={{ fontSize: 13, color: '#4b5563', cursor: 'pointer' }}>
             ← Back to Home
           </span>
         </p>
