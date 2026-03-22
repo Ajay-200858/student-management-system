@@ -1,422 +1,139 @@
-// frontend/src/components/Chatbot.jsx
-
 import { useState, useRef, useEffect } from 'react'
 
-// ─────────────────────────────────────────────────────────────
-//  🔑  PASTE YOUR GEMINI API KEY HERE
-const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY_HERE'
-// ─────────────────────────────────────────────────────────────
+// ⚠️ Add your Gemini API key here
+const GEMINI_API_KEY = 'YOUR_GEMINI_API_KEY'
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
 
-const GEMINI_URL =
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`
-
-const SYSTEM_CONTEXT = `You are a helpful assistant for a Student Management System. 
-You help users manage students, marks, departments, and understand the system. 
-Keep answers short and friendly. The system has: Students, Marks, Progress analytics, Login Logs (admin only).`
-
-/* ── tiny markdown-ish renderer ── */
-function MsgText({ text }) {
-  const lines = text.split('\n')
-  return (
-    <div>
-      {lines.map((line, i) => {
-        // bold **text**
-        const parts = line.split(/(\*\*[^*]+\*\*)/g).map((p, j) =>
-          p.startsWith('**') && p.endsWith('**')
-            ? <strong key={j} style={{ color: '#c4b5fd' }}>{p.slice(2, -2)}</strong>
-            : p
-        )
-        return <div key={i} style={{ marginBottom: line === '' ? 6 : 2 }}>{parts}</div>
-      })}
-    </div>
-  )
-}
+const SYSTEM_CONTEXT = `You are a helpful assistant for a Student Management System. You help users manage students, marks, departments, and academic progress. Keep answers short, friendly, and helpful. If asked who you are, say you are the Student MS Assistant.`
 
 export default function Chatbot() {
-  const [open,     setOpen]     = useState(false)
+  const [open, setOpen] = useState(false)
   const [messages, setMessages] = useState([
-    {
-      role: 'bot',
-      text: '👋 Hi! I\'m your Student MS assistant.\nAsk me anything about students, marks, or the system!',
-    },
+    { role: 'bot', text: 'Hi! I\'m your Student MS Assistant 👋\nHow can I help you today?' }
   ])
-  const [input,   setInput]   = useState('')
+  const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [dots,    setDots]    = useState('.')
-  const bottomRef = useRef(null)
-  const inputRef  = useRef(null)
+  const endRef = useRef(null)
 
-  /* auto-scroll */
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages, open])
 
-  /* animated dots */
-  useEffect(() => {
-    if (!loading) return
-    const t = setInterval(() => setDots(d => d.length >= 3 ? '.' : d + '.'), 400)
-    return () => clearInterval(t)
-  }, [loading])
-
-  /* focus input when opened */
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 100)
-  }, [open])
-
-  async function send() {
+  async function sendMessage() {
     const text = input.trim()
     if (!text || loading) return
     setInput('')
-
-    const userMsg = { role: 'user', text }
-    setMessages(prev => [...prev, userMsg])
+    setMessages(prev => [...prev, { role: 'user', text }])
     setLoading(true)
 
     try {
-      // Build conversation history for Gemini
-      const history = messages
-        .filter(m => m.role !== 'error')
-        .map(m => ({
-          role: m.role === 'user' ? 'user' : 'model',
-          parts: [{ text: m.text }],
-        }))
-
-      const body = {
-        system_instruction: { parts: [{ text: SYSTEM_CONTEXT }] },
-        contents: [
-          ...history,
-          { role: 'user', parts: [{ text }] },
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 512,
-        },
-      }
-
-      const res  = await fetch(GEMINI_URL, {
-        method:  'POST',
+      const res = await fetch(GEMINI_URL, {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify(body),
+        body: JSON.stringify({
+          contents: [
+            { role: 'user', parts: [{ text: SYSTEM_CONTEXT }] },
+            ...messages.filter(m => m.role !== 'system').map(m => ({
+              role: m.role === 'user' ? 'user' : 'model',
+              parts: [{ text: m.text }]
+            })),
+            { role: 'user', parts: [{ text }] }
+          ]
+        })
       })
       const data = await res.json()
-
-      if (!res.ok) {
-        const errMsg = data?.error?.message || 'API error'
-        throw new Error(errMsg)
-      }
-
-      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response.'
+      const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Sorry, I couldn\'t understand that. Please try again.'
       setMessages(prev => [...prev, { role: 'bot', text: reply }])
-    } catch (err) {
-      setMessages(prev => [...prev, {
-        role: 'error',
-        text: `⚠️ ${err.message}`,
-      }])
+    } catch {
+      setMessages(prev => [...prev, { role: 'bot', text: 'Connection error. Please check your internet connection.' }])
     } finally {
       setLoading(false)
     }
   }
 
   function handleKey(e) {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
-  }
-
-  /* ── styles ── */
-  const glass = {
-    background:   'rgba(18, 16, 46, 0.72)',
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
-    border:       '1px solid rgba(139, 92, 246, 0.25)',
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage() }
   }
 
   return (
     <>
-      {/* ── Chat window ── */}
+      {/* Floating toggle button */}
+      <button onClick={() => setOpen(o => !o)} title="Chat Assistant" style={{
+        position: 'fixed', bottom: '24px', right: '24px',
+        width: '50px', height: '50px', borderRadius: '50%',
+        background: open ? 'linear-gradient(135deg, #4f46e5, #6366f1)' : 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+        border: 'none', boxShadow: '0 4px 18px rgba(99,102,241,0.45)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: '20px', cursor: 'pointer', zIndex: 1100,
+        transition: 'all 0.25s',
+      }}>
+        {open ? '✕' : '💬'}
+      </button>
+
+      {/* Chat window */}
       {open && (
         <div style={{
-          position:   'fixed',
-          bottom:     88,
-          right:      28,
-          width:      370,
-          height:     520,
-          borderRadius: 20,
-          display:    'flex',
-          flexDirection: 'column',
-          overflow:   'hidden',
-          zIndex:     9999,
-          boxShadow:  '0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(139,92,246,0.2)',
-          ...glass,
+          position: 'fixed', bottom: '84px', right: '24px',
+          width: '320px', maxHeight: '460px',
+          background: 'var(--card-bg)', backdropFilter: 'blur(20px)',
+          border: '1px solid var(--card-border)', borderRadius: '20px',
+          boxShadow: '0 8px 40px rgba(0,0,0,0.15)',
+          display: 'flex', flexDirection: 'column', zIndex: 1100,
+          animation: 'fadeInUp 0.25s ease',
         }}>
-
           {/* Header */}
-          <div style={{
-            padding:      '16px 18px',
-            borderBottom: '1px solid rgba(139,92,246,0.2)',
-            background:   'rgba(124,58,237,0.15)',
-            display:      'flex', alignItems: 'center', gap: 12,
-          }}>
-            {/* Avatar */}
-            <div style={{
-              width: 38, height: 38, borderRadius: '50%',
-              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 18, flexShrink: 0,
-              boxShadow: '0 0 12px rgba(124,58,237,0.5)',
-            }}>🤖</div>
-
-            <div style={{ flex: 1 }}>
-              <div style={{ color: '#fff', fontWeight: 700, fontSize: 14 }}>
-                Student MS Assistant
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 2 }}>
-                <div style={{
-                  width: 7, height: 7, borderRadius: '50%',
-                  background: '#10b981',
-                  boxShadow: '0 0 6px #10b981',
-                }}/>
-                <span style={{ color: '#10b981', fontSize: 11 }}>
-                  {loading ? 'Typing…' : 'Online'}
-                </span>
+          <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--table-border)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px' }}>💬</div>
+            <div>
+              <div style={{ fontWeight: '800', fontSize: '13.5px', color: 'var(--text-primary)' }}>Chatbot</div>
+              <div style={{ fontSize: '11px', color: '#059669', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#059669' }} /> Online
               </div>
             </div>
-
-            {/* Powered by */}
-            <div style={{
-              fontSize: 10, color: '#6b7280',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 20, padding: '3px 9px',
-            }}>
-              Gemini ✨
-            </div>
-
-            {/* Close */}
-            <button onClick={() => setOpen(false)} style={{
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 8, width: 28, height: 28,
-              color: '#9ca3af', cursor: 'pointer', fontSize: 14,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>✕</button>
           </div>
 
           {/* Messages */}
-          <div style={{
-            flex: 1, overflowY: 'auto', padding: '16px 14px',
-            display: 'flex', flexDirection: 'column', gap: 12,
-            scrollbarWidth: 'thin',
-            scrollbarColor: 'rgba(139,92,246,0.3) transparent',
-          }}>
-            {messages.map((msg, i) => {
-              const isUser  = msg.role === 'user'
-              const isError = msg.role === 'error'
-              return (
-                <div key={i} style={{
-                  display: 'flex',
-                  justifyContent: isUser ? 'flex-end' : 'flex-start',
-                  alignItems: 'flex-end', gap: 8,
-                }}>
-                  {/* Bot avatar */}
-                  {!isUser && (
-                    <div style={{
-                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                      background: isError
-                        ? 'rgba(220,38,38,0.3)'
-                        : 'linear-gradient(135deg,#7c3aed,#4f46e5)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 13,
-                    }}>
-                      {isError ? '⚠️' : '🤖'}
-                    </div>
-                  )}
-
-                  {/* Bubble */}
-                  <div style={{
-                    maxWidth: '78%',
-                    padding: '10px 14px',
-                    borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
-                    fontSize: 13, lineHeight: 1.55,
-                    background: isUser
-                      ? 'linear-gradient(135deg, #7c3aed, #4f46e5)'
-                      : isError
-                        ? 'rgba(220,38,38,0.15)'
-                        : 'rgba(255,255,255,0.07)',
-                    border: isUser
-                      ? 'none'
-                      : isError
-                        ? '1px solid rgba(220,38,38,0.3)'
-                        : '1px solid rgba(139,92,246,0.18)',
-                    color: isUser ? '#fff' : isError ? '#f87171' : '#e2e0ff',
-                    boxShadow: isUser
-                      ? '0 4px 15px rgba(124,58,237,0.3)'
-                      : 'none',
-                  }}>
-                    <MsgText text={msg.text} />
-                  </div>
-
-                  {/* User avatar */}
-                  {isUser && (
-                    <div style={{
-                      width: 28, height: 28, borderRadius: '50%', flexShrink: 0,
-                      background: 'rgba(139,92,246,0.3)',
-                      border: '1px solid rgba(139,92,246,0.4)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 13,
-                    }}>
-                      👤
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-
-            {/* Typing indicator */}
-            {loading && (
-              <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '14px 14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {messages.map((m, i) => (
+              <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                 <div style={{
-                  width: 28, height: 28, borderRadius: '50%',
-                  background: 'linear-gradient(135deg,#7c3aed,#4f46e5)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13,
-                }}>🤖</div>
-                <div style={{
-                  padding: '10px 16px',
-                  background: 'rgba(255,255,255,0.07)',
-                  border: '1px solid rgba(139,92,246,0.18)',
-                  borderRadius: '18px 18px 18px 4px',
-                  color: '#a78bfa', fontSize: 13,
+                  maxWidth: '82%', padding: '9px 13px', borderRadius: m.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
+                  background: m.role === 'user' ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : 'var(--glass-bg)',
+                  border: m.role === 'user' ? 'none' : '1px solid var(--card-border)',
+                  color: m.role === 'user' ? 'white' : 'var(--text-primary)',
+                  fontSize: '13px', lineHeight: '1.55', whiteSpace: 'pre-wrap',
                 }}>
-                  Thinking{dots}
+                  {m.text}
                 </div>
               </div>
+            ))}
+            {loading && (
+              <div style={{ display: 'flex', gap: '4px', padding: '10px 14px', background: 'var(--glass-bg)', border: '1px solid var(--card-border)', borderRadius: '14px 14px 14px 4px', width: 'fit-content' }}>
+                {[0,1,2].map(i => (
+                  <div key={i} style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--text-muted)', animation: `bounce 1.2s ${i * 0.2}s infinite` }} />
+                ))}
+              </div>
             )}
-            <div ref={bottomRef} />
+            <div ref={endRef} />
           </div>
 
-          {/* Quick suggestions */}
-          {messages.length === 1 && (
-            <div style={{
-              padding: '0 14px 10px',
-              display: 'flex', gap: 6, flexWrap: 'wrap',
-            }}>
-              {[
-                'How do I add a student?',
-                'What is the pass mark?',
-                'How to view marks?',
-                'Explain progress tab',
-              ].map(q => (
-                <button key={q} onClick={() => { setInput(q); setTimeout(send, 0) }}
-                  style={{
-                    padding: '5px 11px', fontSize: 11,
-                    background: 'rgba(124,58,237,0.15)',
-                    border: '1px solid rgba(124,58,237,0.3)',
-                    borderRadius: 20, color: '#a78bfa',
-                    cursor: 'pointer',
-                  }}>
-                  {q}
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Input bar */}
-          <div style={{
-            padding: '12px 14px',
-            borderTop: '1px solid rgba(139,92,246,0.18)',
-            background: 'rgba(0,0,0,0.2)',
-            display: 'flex', gap: 8, alignItems: 'flex-end',
-          }}>
-            <textarea
-              ref={inputRef}
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              onKeyDown={handleKey}
-              placeholder="Ask anything… (Enter to send)"
-              rows={1}
-              style={{
-                flex: 1,
-                padding: '10px 14px',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(139,92,246,0.25)',
-                borderRadius: 12,
-                color: '#e2e0ff',
-                fontSize: 13,
-                outline: 'none',
-                resize: 'none',
-                fontFamily: 'inherit',
-                lineHeight: 1.5,
-                maxHeight: 90,
-                overflowY: 'auto',
-                scrollbarWidth: 'thin',
-              }}
+          {/* Input */}
+          <div style={{ padding: '12px 14px', borderTop: '1px solid var(--table-border)', display: 'flex', gap: '8px' }}>
+            <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey}
+              placeholder="Ask me anything…" disabled={loading}
+              style={{ flex: 1, padding: '9px 12px', borderRadius: '12px', border: '1.5px solid var(--card-border)', background: 'var(--glass-bg)', color: 'var(--text-primary)', fontSize: '13px', fontFamily: 'var(--font-body)', outline: 'none', transition: 'border-color 0.2s' }}
+              onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+              onBlur={e => e.target.style.borderColor = 'var(--card-border)'}
             />
-            <button
-              onClick={send}
-              disabled={loading || !input.trim()}
-              style={{
-                width: 40, height: 40, borderRadius: 12, flexShrink: 0,
-                background: loading || !input.trim()
-                  ? 'rgba(124,58,237,0.2)'
-                  : 'linear-gradient(135deg,#7c3aed,#4f46e5)',
-                border: '1px solid rgba(139,92,246,0.3)',
-                color: '#fff', fontSize: 16, cursor: loading || !input.trim() ? 'not-allowed' : 'pointer',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'all 0.2s',
-                boxShadow: loading || !input.trim() ? 'none' : '0 4px 15px rgba(124,58,237,0.35)',
-              }}
-            >
-              {loading ? '⏳' : '➤'}
+            <button onClick={sendMessage} disabled={!input.trim() || loading} style={{ width: '36px', height: '36px', borderRadius: '10px', background: input.trim() && !loading ? 'linear-gradient(135deg, #6366f1, #4f46e5)' : 'rgba(99,102,241,0.3)', border: 'none', color: 'white', fontSize: '14px', cursor: input.trim() && !loading ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              ➤
             </button>
           </div>
         </div>
       )}
 
-      {/* ── FAB button ── */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          position:   'fixed',
-          bottom:     28,
-          right:      28,
-          width:      56,
-          height:     56,
-          borderRadius: '50%',
-          background: open
-            ? 'rgba(220,38,38,0.8)'
-            : 'linear-gradient(135deg,#7c3aed,#4f46e5)',
-          border:     '2px solid rgba(139,92,246,0.4)',
-          color:      '#fff',
-          fontSize:   24,
-          cursor:     'pointer',
-          zIndex:     10000,
-          display:    'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow:  open
-            ? '0 8px 30px rgba(220,38,38,0.4)'
-            : '0 8px 30px rgba(124,58,237,0.5), 0 0 0 6px rgba(124,58,237,0.1)',
-          transition: 'all 0.3s ease',
-          backdropFilter: 'blur(10px)',
-        }}
-      >
-        {open ? '✕' : '🤖'}
-      </button>
-
-      {/* Pulse ring when closed */}
-      {!open && (
-        <div style={{
-          position: 'fixed', bottom: 28, right: 28,
-          width: 56, height: 56,
-          borderRadius: '50%',
-          border: '2px solid rgba(124,58,237,0.4)',
-          zIndex: 9998,
-          animation: 'chatPulse 2s infinite',
-          pointerEvents: 'none',
-        }}/>
-      )}
-
       <style>{`
-        @keyframes chatPulse {
-          0%   { transform: scale(1);   opacity: 0.8; }
-          70%  { transform: scale(1.5); opacity: 0;   }
-          100% { transform: scale(1.5); opacity: 0;   }
+        @keyframes bounce {
+          0%, 60%, 100% { transform: translateY(0); }
+          30% { transform: translateY(-5px); }
         }
       `}</style>
     </>

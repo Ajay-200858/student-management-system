@@ -1,409 +1,425 @@
-// frontend/src/pages/Landing.jsx
 import { useNavigate } from 'react-router-dom'
-import { useEffect, useRef } from 'react'
+import { useTheme } from '../context/ThemeContext'
+
+const SunIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <circle cx="12" cy="12" r="4"/>
+    <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+  </svg>
+)
+const MoonIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+  </svg>
+)
+
+const features = [
+  { icon: '👥', title: 'Student Management', desc: 'Enroll, edit, and organise students across multiple departments with ease.' },
+  { icon: '📊', title: 'Marks & Grades', desc: 'Track subject-wise marks, calculate percentages and auto-assign letter grades.' },
+  { icon: '📈', title: 'Progress Analytics', desc: 'Visual charts and reports to monitor performance trends at a glance.' },
+  { icon: '🔐', title: 'Role-Based Access', desc: 'Admin, Teacher and Student roles each get tailored permissions and views.' },
+  { icon: '🌙', title: 'Dark / Light Mode', desc: 'Smooth theme switching stored in your browser — your preference, always.' },
+  { icon: '⚡', title: 'Real-time Updates', desc: 'Instant data sync across all pages without full-page reloads.' },
+]
+
+const stats = [
+  { value: '6+', label: 'Departments' },
+  { value: '3', label: 'User Roles' },
+  { value: '100%', label: 'Open Source' },
+  { value: 'A+', label: 'Grade System' },
+]
 
 export default function Landing() {
   const navigate = useNavigate()
-  const canvasRef = useRef(null)
+  const { theme, toggleTheme } = useTheme()
 
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-
-    const resize = () => {
-      canvas.width = canvas.offsetWidth
-      canvas.height = canvas.offsetHeight
-    }
-    resize()
-
-    const particles = Array.from({ length: 55 }, () => ({
-      x: Math.random() * canvas.width,
-      y: Math.random() * canvas.height,
-      r: Math.random() * 2 + 0.5,
-      dx: (Math.random() - 0.5) * 0.4,
-      dy: (Math.random() - 0.5) * 0.4,
-      opacity: Math.random() * 0.5 + 0.1,
-    }))
-
-    let animId
-    const draw = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      particles.forEach(p => {
-        ctx.beginPath()
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(139, 92, 246, ${p.opacity})`
-        ctx.fill()
-        p.x += p.dx; p.y += p.dy
-        if (p.x < 0 || p.x > canvas.width) p.dx *= -1
-        if (p.y < 0 || p.y > canvas.height) p.dy *= -1
-      })
-      particles.forEach((p1, i) => {
-        particles.slice(i + 1).forEach(p2 => {
-          const dist = Math.hypot(p1.x - p2.x, p1.y - p2.y)
-          if (dist < 120) {
-            ctx.beginPath()
-            ctx.moveTo(p1.x, p1.y)
-            ctx.lineTo(p2.x, p2.y)
-            ctx.strokeStyle = `rgba(139,92,246,${0.1 * (1 - dist / 120)})`
-            ctx.lineWidth = 0.5
-            ctx.stroke()
-          }
-        })
-      })
-      animId = requestAnimationFrame(draw)
-    }
-    draw()
-
-    window.addEventListener('resize', resize)
-    return () => {
-      cancelAnimationFrame(animId)
-      window.removeEventListener('resize', resize)
-    }
-  }, [])
-
-  const features = [
-    { icon: '👥', title: 'Student Management', desc: 'Add, edit, and manage student profiles with department tracking and full CRUD operations.' },
-    { icon: '📊', title: 'Marks & Analytics', desc: 'Record subject-wise marks, auto-calculate totals, percentage, and grade.' },
-    { icon: '🔐', title: 'Role-Based Access', desc: 'Secure login with Admin, Teacher, and Student roles — each with tailored permissions.' },
-    { icon: '📋', title: 'Login Audit Logs', desc: 'Admin-only access to full login history with timestamps and role-based filtering.' },
-    { icon: '🔍', title: 'Search & Filter', desc: 'Instantly search students by name and filter by department in real-time.' },
-    { icon: '⚡', title: 'Fast & Modern Stack', desc: 'Built with React 19, Flask, and MySQL — a powerful full-stack architecture.' },
-  ]
+  const user = JSON.parse(localStorage.getItem('user') || 'null')
 
   return (
-    /* position:relative + overflow:hidden ensures canvas stays INSIDE this page only */
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #0d0d1a 0%, #12102a 40%, #0f0f1f 100%)',
-      fontFamily: "'DM Sans', sans-serif",
-      color: '#e2e0ff',
-      overflowX: 'hidden',
-      position: 'relative',   // ← key fix: relative, NOT fixed
-    }}>
-      {/* Canvas — absolute inside this page, NOT fixed */}
-      <canvas
-        ref={canvasRef}
-        style={{
-          position: 'absolute',   // ← was fixed, now absolute
-          top: 0, left: 0,
-          width: '100%', height: '100%',
-          zIndex: 0,
-          pointerEvents: 'none',
-        }}
-      />
+    <div style={{ minHeight: '100vh', overflowX: 'hidden' }}>
 
-      {/* Gradient orbs — absolute, NOT fixed */}
-      <div style={{
-        position: 'absolute',  // ← was fixed
-        width: 500, height: 500, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(109,40,217,0.18) 0%, transparent 70%)',
-        top: -100, left: -100, zIndex: 0, pointerEvents: 'none',
-      }} />
-      <div style={{
-        position: 'absolute',  // ← was fixed
-        width: 400, height: 400, borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(79,70,229,0.14) 0%, transparent 70%)',
-        bottom: 100, right: -80, zIndex: 0, pointerEvents: 'none',
-      }} />
-
-      {/* ── NAVBAR ── */}
+      {/* ── Navbar ──────────────────────────────────────── */}
       <nav style={{
-        position: 'sticky', top: 0,   // ← sticky inside this page, not fixed globally
-        zIndex: 100,
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        padding: '18px 48px',
-        background: 'rgba(13,13,26,0.85)',
-        backdropFilter: 'blur(20px)',
-        borderBottom: '1px solid rgba(139,92,246,0.12)',
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 200,
+        padding: '14px 40px',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        background: 'var(--glass-bg)',
+        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid var(--glass-border)',
+        boxShadow: '0 1px 24px rgba(99,102,241,0.07)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div style={{
-            width: 36, height: 36, borderRadius: 10,
-            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+            width: '36px', height: '36px', borderRadius: '10px',
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '16px', boxShadow: '0 4px 12px rgba(99,102,241,0.35)',
           }}>🎓</div>
-          <span style={{ fontWeight: 700, fontSize: 18, color: '#fff' }}>Student MS</span>
+          <span style={{ fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)', letterSpacing: '-0.02em' }}>
+            Student<span style={{ color: 'var(--primary)' }}>MS</span>
+          </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 32 }}>
-          <a href="#features" style={{ color: '#a5b4fc', fontSize: 14, textDecoration: 'none' }}>Features</a>
-          <a href="#stats"    style={{ color: '#a5b4fc', fontSize: 14, textDecoration: 'none' }}>Overview</a>
-          <button
-            onClick={() => navigate('/login')}
-            style={{
-              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-              color: '#fff', border: 'none', borderRadius: 10,
-              padding: '9px 22px', fontSize: 14, fontWeight: 600,
-              cursor: 'pointer', boxShadow: '0 4px 20px rgba(124,58,237,0.3)',
-            }}
-          >
-            Sign In →
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <button onClick={toggleTheme} style={{
+            padding: '8px', borderRadius: '10px',
+            border: '1px solid var(--table-border)', background: 'var(--glass-bg)',
+            color: 'var(--text-secondary)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', transition: 'all 0.2s',
+          }}>
+            {theme === 'light' ? <MoonIcon /> : <SunIcon />}
           </button>
+
+          {user ? (
+            <button onClick={() => navigate('/')} style={{
+              padding: '9px 20px', borderRadius: '10px',
+              background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+              color: 'white', border: 'none', cursor: 'pointer',
+              fontSize: '13.5px', fontWeight: '700', fontFamily: 'var(--font-body)',
+              boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
+            }}>
+              Go to Dashboard →
+            </button>
+          ) : (
+            <>
+              <button onClick={() => navigate('/login')} style={{
+                padding: '9px 18px', borderRadius: '10px',
+                border: '1px solid var(--table-border)', background: 'transparent',
+                color: 'var(--text-secondary)', cursor: 'pointer',
+                fontSize: '13.5px', fontWeight: '600', fontFamily: 'var(--font-body)',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={e => { e.currentTarget.style.color = 'var(--primary)'; e.currentTarget.style.borderColor = 'var(--primary)' }}
+              onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.borderColor = 'var(--table-border)' }}
+              >
+                Sign In
+              </button>
+              <button onClick={() => navigate('/login')} style={{
+                padding: '9px 20px', borderRadius: '10px',
+                background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+                color: 'white', border: 'none', cursor: 'pointer',
+                fontSize: '13.5px', fontWeight: '700', fontFamily: 'var(--font-body)',
+                boxShadow: '0 4px 12px rgba(99,102,241,0.3)',
+              }}>
+                Get Started
+              </button>
+            </>
+          )}
         </div>
       </nav>
 
-      {/* ── HERO ── */}
+      {/* ── Hero ────────────────────────────────────────── */}
       <section style={{
-        position: 'relative', zIndex: 10,
-        display: 'flex', flexDirection: 'column', alignItems: 'center',
-        paddingTop: 100, paddingBottom: 80, textAlign: 'center',
+        minHeight: '100vh',
+        display: 'flex', flexDirection: 'column',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '120px 24px 80px',
+        textAlign: 'center',
+        position: 'relative',
       }}>
+        {/* Decorative blobs */}
         <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 8,
-          background: 'rgba(139,92,246,0.12)',
-          border: '1px solid rgba(139,92,246,0.3)',
-          borderRadius: 100, padding: '6px 18px',
-          fontSize: 12, fontWeight: 600, letterSpacing: '0.08em',
-          color: '#c4b5fd', marginBottom: 32, textTransform: 'uppercase',
+          position: 'absolute', top: '15%', left: '10%',
+          width: '320px', height: '320px', borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(99,102,241,0.18) 0%, transparent 70%)',
+          pointerEvents: 'none', animation: 'pulse 6s ease-in-out infinite',
+        }} />
+        <div style={{
+          position: 'absolute', bottom: '20%', right: '8%',
+          width: '400px', height: '400px', borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(139,92,246,0.14) 0%, transparent 70%)',
+          pointerEvents: 'none', animation: 'pulse 8s ease-in-out infinite reverse',
+        }} />
+        <div style={{
+          position: 'absolute', top: '40%', right: '20%',
+          width: '200px', height: '200px', borderRadius: '50%',
+          background: 'radial-gradient(circle, rgba(6,182,212,0.12) 0%, transparent 70%)',
+          pointerEvents: 'none',
+        }} />
+
+        {/* Badge */}
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: '8px',
+          padding: '6px 16px', borderRadius: '20px',
+          background: 'var(--primary-light)',
+          border: '1px solid rgba(99,102,241,0.25)',
+          marginBottom: '24px',
+          animation: 'fadeInUp 0.5s ease forwards',
         }}>
-          <span style={{
-            width: 7, height: 7, borderRadius: '50%',
-            background: '#10b981', display: 'inline-block',
-            boxShadow: '0 0 8px #10b981',
-          }} />
-          Live Dashboard Active
+          <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 0 2px rgba(34,197,94,0.3)' }} />
+          <span style={{ fontSize: '12.5px', fontWeight: '700', color: 'var(--primary)', letterSpacing: '0.04em' }}>
+            STUDENT MANAGEMENT SYSTEM
+          </span>
         </div>
 
+        {/* Headline */}
         <h1 style={{
-          fontSize: 'clamp(40px, 6vw, 76px)',
-          fontWeight: 800, lineHeight: 1.1,
-          color: '#fff', marginBottom: 24,
-          letterSpacing: '-0.02em',
+          fontSize: 'clamp(36px, 6vw, 72px)',
+          fontWeight: '800',
+          color: 'var(--text-primary)',
+          letterSpacing: '-0.04em',
+          lineHeight: '1.08',
+          maxWidth: '820px',
+          marginBottom: '20px',
+          animation: 'fadeInUp 0.5s ease 0.1s forwards', opacity: 0,
         }}>
           Manage Students
           <br />
           <span style={{
-            background: 'linear-gradient(135deg, #a78bfa, #818cf8, #60a5fa)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
+            background: 'linear-gradient(135deg, #6366f1, #8b5cf6, #06b6d4)',
+            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           }}>
-            Smarter & Faster
+            Smarter &amp; Faster
           </span>
         </h1>
 
-        <p style={{ fontSize: 18, color: '#a5b4fc', lineHeight: 1.7, maxWidth: 540, marginBottom: 40 }}>
-          A complete student management system with marks tracking, role-based
-          access, department analytics, and admin audit logs.
+        {/* Subtitle */}
+        <p style={{
+          fontSize: '18px', color: 'var(--text-secondary)',
+          maxWidth: '540px', lineHeight: '1.7',
+          marginBottom: '36px',
+          animation: 'fadeInUp 0.5s ease 0.2s forwards', opacity: 0,
+        }}>
+          A modern platform for schools and colleges to track enrollments,
+          subject marks, and academic progress — all in one place.
         </p>
 
-        <div style={{ display: 'flex', gap: 16, marginBottom: 70, flexWrap: 'wrap', justifyContent: 'center' }}>
+        {/* CTA Buttons */}
+        <div style={{
+          display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center',
+          animation: 'fadeInUp 0.5s ease 0.3s forwards', opacity: 0,
+        }}>
           <button
             onClick={() => navigate('/login')}
             style={{
-              background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-              color: '#fff', border: 'none', borderRadius: 14,
-              padding: '14px 36px', fontSize: 16, fontWeight: 600,
-              cursor: 'pointer', boxShadow: '0 8px 30px rgba(124,58,237,0.4)',
+              padding: '14px 32px',
+              background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+              color: 'white', border: 'none', borderRadius: '14px',
+              fontSize: '15px', fontWeight: '700', fontFamily: 'var(--font-body)',
+              cursor: 'pointer', boxShadow: '0 6px 20px rgba(99,102,241,0.4)',
+              transition: 'all 0.2s',
+              display: 'flex', alignItems: 'center', gap: '8px',
             }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 28px rgba(99,102,241,0.5)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(99,102,241,0.4)' }}
           >
-            Get Started →
+            Start Now — It's Free
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
           </button>
           <button
             onClick={() => document.getElementById('features').scrollIntoView({ behavior: 'smooth' })}
             style={{
-              background: 'rgba(139,92,246,0.08)',
-              color: '#c4b5fd', border: '1px solid rgba(139,92,246,0.25)',
-              borderRadius: 14, padding: '14px 36px', fontSize: 16, fontWeight: 600,
-              cursor: 'pointer',
+              padding: '14px 28px',
+              background: 'var(--glass-bg)', color: 'var(--text-primary)',
+              border: '1px solid var(--card-border)', borderRadius: '14px',
+              fontSize: '15px', fontWeight: '600', fontFamily: 'var(--font-body)',
+              cursor: 'pointer', backdropFilter: 'blur(12px)',
+              transition: 'all 0.2s',
             }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--glass-shadow-hover)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none' }}
           >
-            Explore Features
+            Explore Features ↓
           </button>
         </div>
 
-        {/* Dashboard preview card */}
+        {/* Hero Preview Card */}
         <div style={{
-          width: '90%', maxWidth: 820,
-          background: 'rgba(18,16,42,0.9)',
-          border: '1px solid rgba(139,92,246,0.2)',
-          borderRadius: 20, overflow: 'hidden',
-          backdropFilter: 'blur(20px)',
-          boxShadow: '0 40px 80px rgba(0,0,0,0.5)',
+          marginTop: '64px',
+          maxWidth: '780px', width: '100%',
+          background: 'var(--glass-bg-strong)',
+          backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid var(--glass-border)',
+          borderRadius: '24px',
+          padding: '28px',
+          boxShadow: '0 24px 80px rgba(99,102,241,0.12), 0 1px 0 rgba(255,255,255,0.7) inset',
+          animation: 'fadeInUp 0.6s ease 0.4s forwards', opacity: 0,
         }}>
-          {/* card titlebar */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 12,
-            padding: '14px 20px',
-            background: 'rgba(139,92,246,0.07)',
-            borderBottom: '1px solid rgba(139,92,246,0.12)',
-          }}>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {['#ff5f57','#ffbd2e','#28c840'].map(c => (
-                <span key={c} style={{ width: 11, height: 11, borderRadius: '50%', background: c, display: 'inline-block' }} />
-              ))}
-            </div>
-            <span style={{ fontSize: 12, color: '#a5b4fc' }}>🎓 Student MS — Live Dashboard</span>
-          </div>
-
-          {/* stats row */}
-          <div style={{ padding: '20px', display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          {/* Fake mini dashboard */}
+          <div style={{ display: 'flex', gap: '16px', marginBottom: '20px', flexWrap: 'wrap' }}>
             {[
-              { label: 'Total Students', val: '128', color: '#7c3aed' },
-              { label: 'Departments',    val: '6',   color: '#059669' },
-              { label: 'Access Level',   val: 'Admin', color: '#b45309' },
-            ].map(s => (
-              <div key={s.label} style={{
-                flex: 1, minWidth: 120,
-                background: 'rgba(255,255,255,0.04)',
-                borderRadius: 10, padding: '12px 14px',
-                borderTop: `3px solid ${s.color}`,
+              { label: 'Total Students', val: '248', color: '#6366f1', icon: '👥' },
+              { label: 'Departments', val: '6', color: '#059669', icon: '🏛' },
+              { label: 'Avg Score', val: '74%', color: '#0891b2', icon: '📊' },
+              { label: 'Top Grade', val: 'A+', color: '#d97706', icon: '🏆' },
+            ].map(c => (
+              <div key={c.label} style={{
+                flex: '1 1 130px',
+                background: 'var(--glass-bg)', border: '1px solid var(--card-border)',
+                borderRadius: '14px', padding: '14px 16px',
               }}>
-                <div style={{ fontSize: 26, fontWeight: 700, color: s.color }}>{s.val}</div>
-                <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>{s.label}</div>
+                <div style={{ fontSize: '20px', marginBottom: '6px' }}>{c.icon}</div>
+                <div style={{ fontSize: '22px', fontWeight: '800', color: c.color, letterSpacing: '-0.04em' }}>{c.val}</div>
+                <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '500', marginTop: '2px' }}>{c.label}</div>
               </div>
             ))}
           </div>
-
-          {/* table */}
-          <div style={{ padding: '0 20px 20px' }}>
-            <div style={{
-              display: 'grid', gridTemplateColumns: '60px 1fr 1fr 90px',
-              padding: '8px 12px',
-              background: 'rgba(255,255,255,0.03)', borderRadius: 6,
-              fontSize: 11, color: '#6b7280', fontWeight: 600,
-              textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6,
-            }}>
-              <span>ID</span><span>Name</span><span>Department</span><span>Marks</span>
-            </div>
+          {/* Fake progress bars */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {[
-              { id: '001', name: 'Arjun Kumar',  dept: 'Computer Science', marks: '487' },
-              { id: '002', name: 'Priya Sharma', dept: 'Electronics',       marks: '412' },
-              { id: '003', name: 'Rahul Patel',  dept: 'Mathematics',       marks: '378' },
+              { dept: 'Computer Science', pct: 88, color: '#6366f1' },
+              { dept: 'Electronics', pct: 72, color: '#0891b2' },
+              { dept: 'Mathematics', pct: 65, color: '#7c3aed' },
             ].map(r => (
-              <div key={r.id} style={{
-                display: 'grid', gridTemplateColumns: '60px 1fr 1fr 90px',
-                padding: '10px 12px', fontSize: 13,
-                borderBottom: '1px solid rgba(255,255,255,0.04)', alignItems: 'center',
-              }}>
-                <span style={{ color: '#6b7280', fontFamily: 'monospace' }}>#{r.id}</span>
-                <span style={{ color: '#e2e0ff', fontWeight: 500 }}>{r.name}</span>
-                <span style={{
-                  display: 'inline-block',
-                  background: 'rgba(139,92,246,0.15)', color: '#a78bfa',
-                  borderRadius: 20, padding: '2px 10px', fontSize: 11,
-                }}>{r.dept}</span>
-                <span style={{ color: '#10b981', fontWeight: 700 }}>{r.marks}</span>
+              <div key={r.dept} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)', width: '130px', flexShrink: 0 }}>{r.dept}</span>
+                <div style={{ flex: 1, height: '8px', background: 'var(--table-border)', borderRadius: '4px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${r.pct}%`, background: r.color, borderRadius: '4px' }} />
+                </div>
+                <span style={{ fontSize: '12.5px', fontWeight: '700', color: 'var(--text-primary)', width: '34px', textAlign: 'right' }}>{r.pct}%</span>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── STATS ── */}
-      <section id="stats" style={{
-        position: 'relative', zIndex: 10,
-        display: 'flex', justifyContent: 'center', gap: 20,
-        padding: '60px 48px', flexWrap: 'wrap',
-        borderTop: '1px solid rgba(139,92,246,0.1)',
-        borderBottom: '1px solid rgba(139,92,246,0.1)',
-      }}>
-        {[
-          { value: '6+',   label: 'Departments' },
-          { value: '3',    label: 'Access Roles' },
-          { value: '100%', label: 'Secure Auth' },
-          { value: '∞',   label: 'Students' },
-        ].map(s => (
-          <div key={s.label} style={{
-            textAlign: 'center', padding: '20px 40px',
-            background: 'rgba(139,92,246,0.06)',
-            border: '1px solid rgba(139,92,246,0.15)',
-            borderRadius: 16,
-          }}>
-            <div style={{
-              fontSize: 44, fontWeight: 800,
-              background: 'linear-gradient(135deg, #a78bfa, #818cf8)',
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
-            }}>{s.value}</div>
-            <div style={{ fontSize: 13, color: '#6b7280', marginTop: 4 }}>{s.label}</div>
-          </div>
-        ))}
-      </section>
-
-      {/* ── FEATURES ── */}
-      <section id="features" style={{
-        position: 'relative', zIndex: 10,
-        padding: '100px 48px', textAlign: 'center',
-      }}>
+      {/* ── Stats ───────────────────────────────────────── */}
+      <section style={{ padding: '60px 40px' }}>
         <div style={{
-          display: 'inline-block',
-          background: 'rgba(139,92,246,0.12)',
-          border: '1px solid rgba(139,92,246,0.25)',
-          color: '#a78bfa', borderRadius: 100,
-          padding: '5px 18px', fontSize: 12, fontWeight: 600,
-          textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 20,
-        }}>Everything You Need</div>
-
-        <h2 style={{
-          fontSize: 'clamp(28px, 4vw, 50px)', fontWeight: 800,
-          color: '#fff', lineHeight: 1.2, marginBottom: 14,
+          maxWidth: '900px', margin: '0 auto',
+          display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px',
         }}>
-          Powerful Features,<br />Built for Educators
-        </h2>
-        <p style={{ fontSize: 16, color: '#6b7280', maxWidth: 480, margin: '0 auto 60px' }}>
-          Every tool an institution needs — from student enrollment to marks analytics.
-        </p>
-
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: 20, maxWidth: 1000, margin: '0 auto', textAlign: 'left',
-        }}>
-          {features.map(f => (
-            <div key={f.title} style={{
-              background: 'rgba(18,16,42,0.7)',
-              border: '1px solid rgba(139,92,246,0.15)',
-              borderRadius: 18, padding: '28px',
-              backdropFilter: 'blur(10px)',
-              transition: 'transform 0.2s, border-color 0.2s',
+          {stats.map((s, i) => (
+            <div key={s.label} style={{
+              background: 'var(--card-bg)', backdropFilter: 'blur(12px)',
+              border: '1px solid var(--card-border)', borderRadius: '20px',
+              padding: '28px 20px', textAlign: 'center',
+              boxShadow: 'var(--glass-shadow)',
+              animation: `fadeInUp 0.5s ease ${i * 80}ms forwards`, opacity: 0,
             }}>
-              <div style={{ fontSize: 32, marginBottom: 14 }}>{f.icon}</div>
-              <h3 style={{ fontSize: 16, fontWeight: 700, color: '#e2e0ff', marginBottom: 8 }}>{f.title}</h3>
-              <p style={{ fontSize: 14, color: '#6b7280', lineHeight: 1.65 }}>{f.desc}</p>
+              <div style={{
+                fontSize: '40px', fontWeight: '800',
+                background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
+                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                letterSpacing: '-0.04em', marginBottom: '6px',
+              }}>{s.value}</div>
+              <div style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: '600' }}>{s.label}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section style={{
-        position: 'relative', zIndex: 10,
-        textAlign: 'center', padding: '100px 48px',
-        borderTop: '1px solid rgba(139,92,246,0.1)',
-      }}>
-        <h2 style={{ fontSize: 'clamp(26px, 4vw, 46px)', fontWeight: 800, color: '#fff', marginBottom: 16 }}>
-          Ready to Get Started?
-        </h2>
-        <p style={{ fontSize: 16, color: '#6b7280', marginBottom: 36 }}>
-          Sign in with your credentials and take full control of your institution's data.
-        </p>
-        <button
-          onClick={() => navigate('/login')}
-          style={{
-            background: 'linear-gradient(135deg, #7c3aed, #4f46e5)',
-            color: '#fff', border: 'none', borderRadius: 14,
-            padding: '14px 36px', fontSize: 16, fontWeight: 600,
-            cursor: 'pointer', boxShadow: '0 8px 30px rgba(124,58,237,0.4)',
-          }}
-        >
-          Launch Dashboard 🚀
-        </button>
+      {/* ── Features ────────────────────────────────────── */}
+      <section id="features" style={{ padding: '60px 40px 80px' }}>
+        <div style={{ maxWidth: '980px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <div style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '5px 14px', borderRadius: '20px',
+              background: 'var(--primary-light)', border: '1px solid rgba(99,102,241,0.2)',
+              marginBottom: '14px',
+            }}>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)', letterSpacing: '0.06em' }}>FEATURES</span>
+            </div>
+            <h2 style={{
+              fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: '800',
+              color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: '12px',
+            }}>
+              Everything you need
+            </h2>
+            <p style={{ fontSize: '16px', color: 'var(--text-secondary)', maxWidth: '480px', margin: '0 auto', lineHeight: '1.7' }}>
+              A complete toolkit built for academic institutions — from enrolment to analytics.
+            </p>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px' }}>
+            {features.map((f, i) => (
+              <div key={f.title} style={{
+                background: 'var(--card-bg)', backdropFilter: 'blur(12px)',
+                border: '1px solid var(--card-border)', borderRadius: '20px',
+                padding: '28px 24px',
+                boxShadow: 'var(--glass-shadow)',
+                transition: 'all 0.28s ease',
+                cursor: 'default',
+                animation: `fadeInUp 0.5s ease ${i * 80}ms forwards`, opacity: 0,
+              }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = 'var(--glass-shadow-hover)' }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'var(--glass-shadow)' }}
+              >
+                <div style={{
+                  width: '48px', height: '48px', borderRadius: '14px',
+                  background: 'var(--primary-light)', border: '1px solid rgba(99,102,241,0.15)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '22px', marginBottom: '16px',
+                }}>{f.icon}</div>
+                <h3 style={{ fontSize: '15px', fontWeight: '700', color: 'var(--text-primary)', marginBottom: '8px' }}>{f.title}</h3>
+                <p style={{ fontSize: '13.5px', color: 'var(--text-secondary)', lineHeight: '1.6' }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer style={{
-        position: 'relative', zIndex: 10,
-        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
-        padding: '40px 48px',
-        borderTop: '1px solid rgba(139,92,246,0.1)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ fontSize: 20 }}>🎓</span>
-          <span style={{ fontWeight: 700, fontSize: 18, color: '#fff' }}>Student MS</span>
+      {/* ── CTA Banner ──────────────────────────────────── */}
+      <section style={{ padding: '40px 40px 100px' }}>
+        <div style={{
+          maxWidth: '820px', margin: '0 auto',
+          background: 'linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.1))',
+          backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+          border: '1px solid rgba(99,102,241,0.25)',
+          borderRadius: '28px', padding: '56px 48px',
+          textAlign: 'center',
+          boxShadow: '0 16px 48px rgba(99,102,241,0.1)',
+          position: 'relative', overflow: 'hidden',
+        }}>
+          <div style={{
+            position: 'absolute', top: '-60px', right: '-60px',
+            width: '200px', height: '200px', borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(139,92,246,0.2) 0%, transparent 70%)',
+            pointerEvents: 'none',
+          }} />
+          <h2 style={{
+            fontSize: 'clamp(24px, 3.5vw, 40px)', fontWeight: '800',
+            color: 'var(--text-primary)', letterSpacing: '-0.03em', marginBottom: '14px',
+          }}>
+            Ready to get started?
+          </h2>
+          <p style={{ fontSize: '16px', color: 'var(--text-secondary)', marginBottom: '32px', maxWidth: '420px', margin: '0 auto 32px', lineHeight: '1.7' }}>
+            Sign in or create an account to start managing your students today.
+          </p>
+          <button
+            onClick={() => navigate('/login')}
+            style={{
+              padding: '14px 36px',
+              background: 'linear-gradient(135deg, #6366f1, #4f46e5)',
+              color: 'white', border: 'none', borderRadius: '14px',
+              fontSize: '15px', fontWeight: '700', fontFamily: 'var(--font-body)',
+              cursor: 'pointer', boxShadow: '0 6px 20px rgba(99,102,241,0.4)',
+              transition: 'all 0.2s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 30px rgba(99,102,241,0.5)' }}
+            onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(99,102,241,0.4)' }}
+          >
+            Sign In to Dashboard →
+          </button>
         </div>
-        <p style={{ fontSize: 13, color: '#374151' }}>Built with React · Flask · MySQL</p>
-        <p style={{ fontSize: 13, color: '#374151' }}>© 2026 Student Management System</p>
+      </section>
+
+      {/* ── Footer ──────────────────────────────────────── */}
+      <footer style={{
+        borderTop: '1px solid var(--table-border)',
+        padding: '24px 40px',
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: 'var(--glass-bg)', backdropFilter: 'blur(12px)',
+        flexWrap: 'wrap', gap: '12px',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <span style={{ fontSize: '16px' }}>🎓</span>
+          <span style={{ fontSize: '14px', fontWeight: '700', color: 'var(--text-primary)' }}>StudentMS</span>
+        </div>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+          Built with ❤️ for modern academic management
+        </p>
       </footer>
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { transform: scale(1); opacity: 0.7; }
+          50% { transform: scale(1.08); opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }
