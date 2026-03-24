@@ -8,6 +8,7 @@ import AddStudent from './pages/AddStudent'
 import EditStudent from './pages/EditStudent'
 import Marks from './pages/Marks'
 import AdminLogs from './pages/AdminLogs'
+import AdminFeedback from './pages/AdminFeedback'
 import Progress from './pages/Progress'
 import StudentProgress from './pages/StudentProgress'
 import StudentDetails from './pages/StudentDetails'
@@ -27,7 +28,6 @@ function Layout({ children }) {
       <div style={{ flex: 1, padding: '32px', overflowY: 'auto', minWidth: 0 }}>
         {children}
       </div>
-      {/* Floating global widgets */}
       <Chatbot />
       <Feedback />
     </div>
@@ -42,33 +42,17 @@ export default function App() {
           <Route path="/landing" element={<Landing />} />
           <Route path="/login"   element={<Login />} />
 
-          <Route path="/" element={
-            <PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>
-          } />
-          <Route path="/students" element={
-            <PrivateRoute><Layout><Students /></Layout></PrivateRoute>
-          } />
-          <Route path="/add-student" element={
-            <PrivateRoute><Layout><AddStudent /></Layout></PrivateRoute>
-          } />
-          <Route path="/edit-student/:id" element={
-            <PrivateRoute><Layout><EditStudent /></Layout></PrivateRoute>
-          } />
-          <Route path="/marks/:id" element={
-            <PrivateRoute><Layout><Marks /></Layout></PrivateRoute>
-          } />
-          <Route path="/progress" element={
-            <PrivateRoute><Layout><Progress /></Layout></PrivateRoute>
-          } />
-          <Route path="/progress/:id" element={
-            <PrivateRoute><Layout><StudentProgress /></Layout></PrivateRoute>
-          } />
-          <Route path="/student-details/:id" element={
-            <PrivateRoute><Layout><StudentDetails /></Layout></PrivateRoute>
-          } />
-          <Route path="/admin/logs" element={
-            <PrivateRoute><Layout><AdminLogs /></Layout></PrivateRoute>
-          } />
+          <Route path="/" element={<PrivateRoute><Layout><Dashboard /></Layout></PrivateRoute>} />
+          <Route path="/students" element={<PrivateRoute><Layout><Students /></Layout></PrivateRoute>} />
+          <Route path="/add-student" element={<PrivateRoute><Layout><AddStudent /></Layout></PrivateRoute>} />
+          <Route path="/edit-student/:id" element={<PrivateRoute><Layout><EditStudent /></Layout></PrivateRoute>} />
+          <Route path="/marks/:id" element={<PrivateRoute><Layout><Marks /></Layout></PrivateRoute>} />
+          <Route path="/progress" element={<PrivateRoute><Layout><Progress /></Layout></PrivateRoute>} />
+          <Route path="/progress/:id" element={<PrivateRoute><Layout><StudentProgress /></Layout></PrivateRoute>} />
+          <Route path="/student-details/:id" element={<PrivateRoute><Layout><StudentDetails /></Layout></PrivateRoute>} />
+          <Route path="/admin/logs" element={<PrivateRoute><Layout><AdminLogs /></Layout></PrivateRoute>} />
+          <Route path="/admin/feedback" element={<PrivateRoute><Layout><AdminFeedback /></Layout></PrivateRoute>} />
+
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </Router>
